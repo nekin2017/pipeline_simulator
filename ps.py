@@ -10,7 +10,17 @@ class node:
         self.latency = latency
         self.qe_num = 0
         self.latency_step = -1 # -1-invalid, 0-first step finished, til latency-1 as the last step
-        self.stall = [] #0-run, 1-input_stall, 2-output_stall
+        self.stall_h = []
+        self.qe_num_h = []
+
+        global ST_RUN, ST_INPUT_STALL, ST_OUTPUT_STALL
+        ST_RUN=2
+        ST_INPUT_STALL=1
+        ST_OUTPUT_STALL=0
+
+    def add_hist(self, status):
+        self.stall_h.append(status)
+        self.qe_num_h.append(self.qe_num)
 
     def __str__(self):
         return "node(%d, %d): qen=%d lat=%d"%(self.qsize, self.latency,
@@ -29,15 +39,14 @@ class node:
                 #get a new one to handle
                 self.qe_num-=1
                 self.latency_step = 0
-                self.stall.append(0)
+                self.add_hist(ST_RUN)
                 if self.latency_step == self.latency-1:
                     self.latency_step = -1
                     return True
                 else:
                     return False
             else:
-                #input stall
-                self.stall.append(1)
+                self.add_hist(ST_INPUT_STALL)
                 return False
 
         elif self.latency_step == self.latency -1:
@@ -45,15 +54,15 @@ class node:
             if can_output:
                 #release it in self step
                 self.latency_step = -1
-                self.stall.append(2) #not handle anything yet
+                self.add_hist(ST_OUTPUT_STALL)
                 return True
             else:
                 #stall again
-                self.stall.append(2)
+                self.add_hist(ST_OUTPUT_STALL)
                 return False
         else:
             self.latency_step+=1
-            self.stall.append(0)
+            self.add_hist(ST_RUN)
             if self.latency_step == self.latency-1 and can_output:
                 self.latency_step = -1
                 return True
@@ -99,30 +108,40 @@ class chain:
     def show_sum_text(self):
         print("sum:", self.output_num)
         for i in self.nodes:
-            print(i.stall)
+            print(i.stall_h, i.qe_num_h)
 
-    def show_sum_graph(self):
+    def show_sum_graph(self, what=0):
         nn = len(self.nodes)
         i=0
+        plt.subplots_adjust(hspace=0.8)
         for n in self.nodes:
             i+=1
             plt.subplot(nn, 1, i)
-            x=np.arange(0, len(n.stall))
-            y=np.array(n.stall)
-            plt.plot(x, y)
+
             plt.title(n.__str__())
             plt.ylabel("stall")
             plt.xlabel("step")
+
+            if what == 0:
+                x=np.arange(0, len(n.stall_h))
+                y=np.array(n.stall_h)
+                plt.ylim(-0.1, 2.1)
+            else:
+                x=np.arange(0, len(n.qe_num_h))
+                y=np.array(n.qe_num_h)
+
+            plt.plot(x, y)
+            #plt.bar(x, y)
         plt.show()
         
 
 c = chain([
-    node(3, 3),
-    node(4, 4),
-    node(5, 2),
-    node(5, 12),
-    node(3, 6),
+    node(20, 3),
+    node(30, 8),
+    node(50, 2),
+    node(64, 12),
+    node(30, 60),
     ])
 
-c.sim_run(1000)
-c.show_sum_graph()
+c.sim_run(10000)
+c.show_sum_graph(1)
