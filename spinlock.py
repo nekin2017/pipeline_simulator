@@ -106,42 +106,75 @@ class executor:
             print(i, end=' ')
         print()
 
-    def show_sum_text(self):
-        for i in self.threads:
-            print(i.hist_status)
-        #todo: wait queue len
+    def get_queue_len(self):
+        qlen = []
+        for i in range(0, len(self.threads[0].hist_status)):
+            ql = 0
+            for n in self.threads:
+                if n.hist_status[i] == ST_WAIT_LOCK:
+                    ql+=1
+            qlen.append(ql)
+        return qlen
 
-    def show_sum_graph(self):
-        nn = len(self.threads)
+    def show_threads_status(self, graph=False):
         i=0
-        plt.subplots_adjust(hspace=0.8)
+        nn = len(self.threads)
+
+        if graph:
+            plt.subplots_adjust(hspace=0.8)
+
         for n in self.threads:
             i+=1
-            plt.subplot(nn, 1, i)
+            print(n.hist_status)
+            if graph:
+                plt.subplot(nn, 1, i)
 
-            plt.title(n.__str__())
-            plt.ylabel("stall")
-            plt.xlabel("step")
+                plt.title(n.__str__())
+                plt.ylabel("stall")
+                plt.xlabel("step")
 
-            x=np.arange(0, len(n.hist_status))
-            y=np.array(n.hist_status)
-            plt.ylim(-0.1, 2.1)
+                x=np.arange(0, len(n.hist_status))
+                y=np.array(n.hist_status)
+                plt.ylim(-0.1, 2.1)
 
-            plt.plot(x, y)
-            #plt.bar(x, y)
-        plt.show()
-        #todo: wait queue len
-        
+                plt.plot(x, y)
 
-lock1 = lock()
+        if graph:
+            plt.show()
 
-exe = executor([
-    thread(50, 3, lock1),
-    thread(60, 2, lock1),
-    thread(60, 2, lock1),
-    thread(60, 6, lock1),
-    ])
+    def get_percentage(self, data, value):
+        sum = 0
+        for i in data:
+            if i==value:
+                sum+=1
+        return sum/len(data)
 
-exe.sim_run(1000)
-#exe.show_sum_text()
-exe.show_sum_graph()
+    def show_wait_status(self, graph=False, sum_only=True):
+        qls= self.get_queue_len()
+
+        if not sum_only:
+            print(qls)
+            if graph:
+                plt.title("queue len procedure")
+                plt.xlabel("step")
+                plt.ylabel("queue len")
+                x=np.arange(0, len(qls))
+                y=np.array(qls)
+                plt.plot(x, y)
+                plt.show()
+
+        print(self.get_percentage(qls, 0)*100, "percent is free")
+
+
+for i in range(1, 30):
+    lock1 = lock()
+    threads = []
+    for j in range(0, i):
+        threads.append(thread(1000, 10, lock1))
+
+    exe = executor(threads)
+    exe.sim_run(10000)
+    print(i, "threads test:", end='')
+    exe.show_wait_status()
+
+#exe.show_thread_status(graph=True)
