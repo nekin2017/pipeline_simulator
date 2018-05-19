@@ -26,17 +26,23 @@ class lock:
 
 class thread:
 
-    def __init__(self, out_lock_step, in_lock_step, deviate, lock):
+    def __init__(self, out_lock_step, in_lock_step, lock, deviate=0.1):
 
+        assert deviate >= 0 and deviate < 1
         self.out_lock_step = out_lock_step
         self.in_lock_step = in_lock_step
         self.deviate = deviate
         self.lock = lock
 
-        self.cur_out_lock_step = self.out_lock_step
-        self.cur_in_lock_step = self.in_lock_step
+        self.cur_out_lock_step = self.randomized(self.out_lock_step)
+        self.cur_in_lock_step = self.randomized(self.in_lock_step)
         self.hist_status = []
         self.current_status=ST_OUT_LOCK
+
+    def randomized(self, input=1):
+        "return a randomized value: 1 +/- deviate * rand[0-1)"
+        dev = 1.0 - self.deviate + self.deviate * np.random.random() * 2
+        return int(dev*input)
 
     def add_hist(self, status):
         self.hist_wait.append(status)
@@ -46,10 +52,10 @@ class thread:
 
     def switch(self, new_status):
         if new_status == ST_OUT_LOCK:
-            self.cur_out_lock_step = self.out_lock_step
+            self.cur_out_lock_step = self.randomized(self.out_lock_step)
             assert self.current_status == ST_IN_LOCK
         elif new_status == ST_IN_LOCK:
-            self.cur_in_lock_step = self.in_lock_step
+            self.cur_in_lock_step = self.randomized(self.in_lock_step)
             assert self.current_status in [ST_WAIT_LOCK, ST_OUT_LOCK]
         else:
             assert new_status == ST_WAIT_LOCK
@@ -130,25 +136,10 @@ class executor:
 lock1 = lock()
 
 exe = executor([
-    thread(50, 3, 0, lock1),
-    thread(60, 2, 0, lock1),
-    thread(60, 2, 0, lock1),
-    thread(60, 2, 0, lock1),
-    thread(60, 2, 0, lock1),
-    thread(60, 2, 0, lock1),
-    thread(60, 2, 0, lock1),
-    thread(60, 2, 0, lock1),
-    thread(60, 2, 0, lock1),
-    thread(60, 2, 0, lock1),
-    thread(60, 2, 0, lock1),
-    thread(60, 2, 0, lock1),
-    thread(60, 2, 0, lock1),
-    thread(60, 2, 0, lock1),
-    thread(60, 2, 0, lock1),
-    thread(60, 2, 0, lock1),
-    thread(60, 2, 0, lock1),
-    thread(60, 2, 0, lock1),
-    thread(60, 60, 0, lock1),
+    thread(50, 3, lock1),
+    thread(60, 2, lock1),
+    thread(60, 2, lock1),
+    thread(60, 6, lock1),
     ])
 
 exe.sim_run(1000)
