@@ -1,4 +1,4 @@
 test:
-	./ps.py
+	./spinlock.py
 
 .PHONY: test

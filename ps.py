@@ -144,4 +144,4 @@ c = chain([
     ])
 
 c.sim_run(10000)
-c.show_sum_graph(1)
+c.show_sum_graph(0)
