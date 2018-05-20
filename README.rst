@@ -13,3 +13,7 @@ spinlock.py: spin lock simulation
 We assume there are n threads which share the same spinlock, we try to figure
 out the behavior of the waiting queue
 
+simple cpu
+==========
+this is a simple cpu simulator to show how cpu is work. see README.rst in the
+directory for detail
