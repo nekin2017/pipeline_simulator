@@ -8,49 +8,56 @@ register files
 ``````````````
 (word wide: 32bit, little endian)
 r0=0
-r1
-r2
-r3
-r4
-pc
-lr-link register
-st-cpu state
+r1-r12
+r13-pc
+r14-lr-link register
+r15-st-cpu state: bit0-zero
 
 instruction set
 ````````````````
 
-ld <Tr>, <Sr>
-mov <Tr>, <Sr>
-movih <Tr>, <imme>
-movil <Tr>, <imme>
-xor <Tr>, <Sr1>, <Sr2>
-halt
+ld <Tr> <imme>          #load
+movi <Tr> <imme>        #move imme
+st <Dr> <Ar>            #store data to address
+inc <Tr>                #Tr+1
+cmpi <Sr>, <immu>       #compare with imme
+bz <immu>               #relative branch to address
+nop                     #no operation
+halt                    #halt the cpu
 
-
-psudeo code
+pseudo code
 ```````````
-data <imme32>
+data <imme_byte>...     #data definition
+ldl <Tr> <lable>        #label version of ld
+label <name>            #define label
+bzl <label>             #label version of bz
 
 
 instruction encoding
 ````````````````````
 
-code[0:5] instruction
-        00000 nop
-        00001 halt
-        001xx ld
-        01001 mov
-        01010 movih
-        01011 movil
-        01100 xor
+bytes[0] operation code
+        0       nop
+        1       ld
+        2       movi
+        3       st
+        4       inc
+        5       cmpi
+        6       bz
+        7       halt
 
-code[6:8] condition
-code[9:11] <Tr>
-code[12:14] <Sr1>
-code[14:16] <Sr2>
-code[17:32] imme
+bytes[1] reserved
+bytes[2] register1 register2
+bytes[3] register3 register4
+bytes[2:3] imme
 
 
 memory space
 `````````````
-0-4096 are valid
+0-4095 memory
+4096-8192 io space
+others are invalid
+
+reset vector
+````````````
+address 0
