@@ -21,23 +21,27 @@ def output_data(data):
     output_buf.append(data)
     pc+=1
 
+def make_op_bytes(op, tr):
+    inst=bytearray(4)
+    inst[0]=op
+    inst[1]=tr
+    return inst
+
 def output_inst_otss(op, tr, sr1, sr2):
     global pc
-    inst=op<<8*3
-    inst|=tr<<8*2
-    inst|=sr1<<8
-    inst|=sr2
-    log_err("(pc=%x) %d, %d, %d, %d -> %x"%(pc, op, tr, sr1, sr2, inst))
-    output_buf.append(inst)
+    inst=make_op_bytes(op, tr)
+    inst[2]=sr1
+    inst[3]=sr2
+    log_err("(pc=%x) %d, %d, %d, %d -> %x"%(pc, op, tr, sr1, sr2, int.from_bytes(inst, 'little')))
+    output_buf.append(int.from_bytes(inst, 'little'))
     pc+=1
 
-def output_inst_otm(op, tr, imme):
+def output_inst_oti(op, tr, imme):
     global pc
-    inst=op<<8*3
-    inst|=tr<<8*2
-    inst|=imme
-    log_err("(pc=%x) %d, %d, %d -> %x"%(pc, op, tr, imme, inst))
-    output_buf.append(inst)
+    inst=make_op_bytes(op, tr)
+    inst[2:4]=imme.to_bytes(2, 'little')
+    log_err("(pc=%x) %d, %d, %d -> %x"%(pc, op, tr, imme, int.from_bytes(inst, 'little')))
+    output_buf.append(int.from_bytes(inst, 'little', signed=False))
     pc+=1
 
 def get_reg(word, Tr=False):
@@ -66,7 +70,7 @@ def com_coder(info, operand):
     output_inst_otss(info[0], 0, 0, 0)
 
 def com_oti_coder(info, operand):
-    output_inst_otm(info[0], get_reg(operand[0]), get_imme(operand[1]))
+    output_inst_oti(info[0], get_reg(operand[0]), get_imme(operand[1]))
 
 def com_ots_coder(info, operand):
     output_inst_otss(info[0], get_reg(operand[0]), get_reg(operand[1], Tr=False), 0)
@@ -75,7 +79,7 @@ def com_ot_coder(info, operand):
     output_inst_otss(info[0], get_reg(operand[0]), 0, 0)
 
 def com_oi_coder(info, operand):
-    output_inst_otm(info[0], 0, get_imme(operand[0]))
+    output_inst_oti(info[0], 0, get_imme(operand[0]))
 
 def data_coder(info, operand):
     try:
@@ -99,7 +103,7 @@ def ldl_coder(info, operand):
     log_err("(pc=%x) ldl set tag"%(pc))
     pc+=1
 
-def bzl_coder(info, operand):
+def bnzl_coder(info, operand):
     global pc
     bzl_rec.append([pc, operand[0]])
     output_buf.append(0)
@@ -111,14 +115,14 @@ ld <Tr> <imme>          #load
 movi <Tr> <imme>        #move imme
 st <Dr> <Ar>            #store data to address
 inc <Tr>                #Tr+1
-cmpi <Sr>, <immu>       #compare with imme
-bz <immu>               #relative branch to address
+cmpi <Tr>, <immu>       #compare with imme
+bnz <immu>               #relative branch to address
 nop                     #no operation
 halt                    #halt the cpu
 data <imme_byte>...     #data definition
 ldl <Tr> <lable>        #label version of ld
 label <name>            #define label
-bzl <label>             #label version of bz
+bnzl <label>             #label version of bz
 """
 
 inst_set = {
@@ -128,12 +132,12 @@ inst_set = {
         'st':   [3, com_ots_coder],
         'inc':  [4, com_ot_coder],
         'cmpi': [5, com_oti_coder],
-        'bz':   [6, com_oi_coder],
+        'bnz':   [6, com_oi_coder],
         'halt': [7, com_coder],
         'data': [-1, data_coder],
         'ldl':  [-1, ldl_coder],
         'label':[-1, label_coder],
-        'bzl':  [-1, bzl_coder]
+        'bnzl':  [-1, bnzl_coder]
 }
 
 def pharse_line(line):
@@ -163,28 +167,28 @@ for line in f.readlines():
 for i in ldl_rec:
     if i[2] in labels:
         raddr=labels[i[2]]-i[0]
-        inst=inst_set['ld'][0]<<8*3
-        inst|=i[1]<<8*2
-        inst|=raddr & 0xffff
-        output_buf[i[0]]=inst
-        log_err("relocate %x with %x"%(i[0], inst))
+        raddr*=4
+        inst=make_op_bytes(inst_set['ld'][0], i[1])
+        inst[2:4]=raddr.to_bytes(2, 'little')
+        output_buf[i[0]]=int.from_bytes(inst, 'little')
+        log_err("relocate %x with %x"%(i[0], int.from_bytes(inst, 'little')))
     else:
         log_err("cannot find label %s"%(i[2]))
 
 for i in bzl_rec:
     if i[1] in labels:
         raddr=labels[i[1]]-i[0]
-        inst=inst_set['bz'][0]<<8*3
-        inst|=0
-        inst|=raddr & 0xffff
-        output_buf[i[0]]=inst
-        log_err("relocate %x with %x"%(i[0], inst))
+        raddr*=4
+        inst=make_op_bytes(inst_set['bnz'][0], 0)
+        inst[2:4]=raddr.to_bytes(2, 'little', signed=True)
+        output_buf[i[0]]=int.from_bytes(inst, 'little')
+        log_err("relocate %x with %x"%(i[0], int.from_bytes(inst, 'little')))
     else:
         log_err("cannot find label %s"%(i[1]))
 
 of = os.fdopen(sys.stdout.fileno(), "wb")
 assert of
 for i in range(0, pc):
-    of.write(output_buf[i].to_bytes(4, 'little', signed=True))
+    of.write(output_buf[i].to_bytes(4, 'little', signed=False))
 
 log_err("success!")

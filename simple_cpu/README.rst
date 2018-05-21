@@ -20,7 +20,7 @@ ld <Tr> <imme>          #load
 movi <Tr> <imme>        #move imme
 st <Dr> <Ar>            #store data to address
 inc <Tr>                #Tr+1
-cmpi <Sr>, <immu>       #compare with imme
+cmpi <Tr>, <immu>       #compare with imme
 bz <immu>               #relative branch to address
 nop                     #no operation
 halt                    #halt the cpu
