@@ -61,11 +61,11 @@ bytes[0] operation code::
 
 memory space
 `````````````
-*0-4095: memory
-*4096-8192: io space
-*others are invalid
+* 0-4095: memory
+* 4096-8192: io space
+* others are invalid
 
 interrupt vector
 ````````````````
-*0:       system reset
-*1024:    input port interrupt
+* 0:       system reset
+* 1024:    input port interrupt
