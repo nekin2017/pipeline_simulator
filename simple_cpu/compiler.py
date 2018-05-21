@@ -17,7 +17,7 @@ def log_err(msg, exit=False):
 
 def output_data(data):
     global pc
-    log_err("data -> %d"%(data))
+    log_err("(pc=%x) data -> %d"%(pc, data))
     output_buf.append(data)
     pc+=1
 
@@ -27,7 +27,7 @@ def output_inst_otss(op, tr, sr1, sr2):
     inst|=tr<<8*2
     inst|=sr1<<8
     inst|=sr2
-    log_err("%d, %d, %d, %d -> %x"%(op, tr, sr1, sr2, inst))
+    log_err("(pc=%x) %d, %d, %d, %d -> %x"%(pc, op, tr, sr1, sr2, inst))
     output_buf.append(inst)
     pc+=1
 
@@ -36,7 +36,7 @@ def output_inst_otm(op, tr, imme):
     inst=op<<8*3
     inst|=tr<<8*2
     inst|=imme
-    log_err("%d, %d, %d -> %x"%(op, tr, imme, inst))
+    log_err("(pc=%x) %d, %d, %d -> %x"%(pc, op, tr, imme, inst))
     output_buf.append(inst)
     pc+=1
 
@@ -93,14 +93,18 @@ def label_coder(info, operand):
     labels[l] = pc
     
 def ldl_coder(info, operand):
+    global pc
     ldl_rec.append([pc, get_reg(operand[0]), operand[1]])
     output_buf.append(0)
-    pc+1
+    log_err("(pc=%x) ldl set tag"%(pc))
+    pc+=1
 
 def bzl_coder(info, operand):
+    global pc
     bzl_rec.append([pc, operand[0]])
     output_buf.append(0)
-    pc+1
+    log_err("(pc=%x) bzl set tag"%(pc))
+    pc+=1
 
 """
 ld <Tr> <imme>          #load
@@ -159,18 +163,22 @@ for line in f.readlines():
 for i in ldl_rec:
     if i[2] in labels:
         raddr=labels[i[2]]-i[0]
-        output_buf[i[0]]=inst_set['ld'][0]<<8*3
-        output_buf[i[0]]|=i[1]<<8*2
-        output_buf[i[0]]|=raddr
+        inst=inst_set['ld'][0]<<8*3
+        inst|=i[1]<<8*2
+        inst|=raddr & 0xffff
+        output_buf[i[0]]=inst
+        log_err("relocate %x with %x"%(i[0], inst))
     else:
         log_err("cannot find label %s"%(i[2]))
 
 for i in bzl_rec:
     if i[1] in labels:
         raddr=labels[i[1]]-i[0]
-        output_buf[i[0]]=inst_set['bz'][0]<<8*3
-        output_buf[i[0]]|=0
-        output_buf[i[0]]|=raddr
+        inst=inst_set['bz'][0]<<8*3
+        inst|=0
+        inst|=raddr & 0xffff
+        output_buf[i[0]]=inst
+        log_err("relocate %x with %x"%(i[0], inst))
     else:
         log_err("cannot find label %s"%(i[1]))
 

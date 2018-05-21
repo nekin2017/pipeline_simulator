@@ -10,5 +10,5 @@ bzl loop
 halt
 
 label data
-data 0x12345678 12
+data 0x12345678 0x12 0x33
 data 1
