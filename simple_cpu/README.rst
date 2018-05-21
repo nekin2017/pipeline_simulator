@@ -18,6 +18,7 @@ register files
 instruction set
 ````````````````
 ::
+
         ld <Tr> <imme>          #load
         movi <Tr> <imme>        #move imme
         st <Dr> <Ar>            #store data to address
@@ -30,6 +31,7 @@ instruction set
 pseudo code
 ```````````
 ::
+
         data <imme_byte>...     #data definition
         ldl <Tr> <lable>        #label version of ld
         label <name>            #define label
@@ -40,6 +42,7 @@ instruction encoding
 ````````````````````
 
 bytes[0] operation code::
+
         0       nop
         1       ld
         2       movi
@@ -58,15 +61,11 @@ bytes[0] operation code::
 
 memory space
 `````````````
-0-4095 memory
-
-4096-8192 io space
-
-others are invalid
+*0-4095: memory
+*4096-8192: io space
+*others are invalid
 
 interrupt vector
 ````````````````
-
-0       system reset
-
-1024    input port interrupt
+*0:       system reset
+*1024:    input port interrupt
