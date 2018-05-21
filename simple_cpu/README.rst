@@ -13,7 +13,7 @@ register files
         r1-r12
         r13-pc
         r14-lr-link register
-        r15-st-cpu state: bit0-zero
+        r15-st-cpu state: bit0-zero bit1-bigger than
 
 instruction set
 ````````````````
@@ -24,7 +24,7 @@ instruction set
         st <Dr> <Ar>            #store data to address
         inc <Tr>                #Tr+1
         cmpi <Tr>, <immu>       #compare with imme
-        bz <immu>               #relative branch to address
+        bnz <immu>              #relative branch to address if non-zore
         nop                     #no operation
         halt                    #halt the cpu
 
@@ -35,7 +35,7 @@ pseudo code
         data <imme_byte>...     #data definition
         ldl <Tr> <lable>        #label version of ld
         label <name>            #define label
-        bzl <label>             #label version of bz
+        bnzl <label>             #label version of bz
 
 
 instruction encoding
@@ -49,7 +49,7 @@ bytes[0] operation code::
         3       st
         4       inc
         5       cmpi
-        6       bz
+        6       bnz
         7       halt
 
 
