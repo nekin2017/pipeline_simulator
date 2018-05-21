@@ -46,10 +46,10 @@ bytes[0] operation code
         6       bz
         7       halt
 
-bytes[1] reserved
-bytes[2] register1 register2
-bytes[3] register3 register4
-bytes[2:3] imme
+bytes[1] output_register
+bytes[2] input_register1
+bytes[3] input_register2
+bytes[2,3] imme
 
 
 memory space
@@ -58,6 +58,7 @@ memory space
 4096-8192 io space
 others are invalid
 
-reset vector
-````````````
-address 0
+interrupt vector
+````````````````
+0       system reset
+1024    input port interrupt
