@@ -23,9 +23,8 @@ from struct import pack
 
 pc=0
 output_buf=[]
-labels={} #all labels {name:pc}
-ldl_rec=[] # [[pc, label_name]]
-bzl_rec=[] # [[pc, label_name]]
+labels={}  #all labels {name:pc}
+rec_tab=[] # [[pc, op, tr, label_name]]
 
 def log_err(msg, exit=False):
     sys.stderr.write(msg)
@@ -68,11 +67,13 @@ def get_reg(word, Tr=False):
 
     try:
         tr=int(word)
+
+        log_err("tr=%d"%(tr))
         if tr<min or tr>12:
             raise Exception()
         return tr
     except:
-            log_err("bad register operand %s"%(word), exit=True)
+            log_err("bad register id %s"%(word), exit=True)
 
 def get_imme(word):
     try:
@@ -112,39 +113,38 @@ def label_coder(info, operand):
         log_err("dup label: %s"%(l), exit=True)
 
     labels[l] = pc
-    
-def ldl_coder(info, operand):
-    global pc
-    ldl_rec.append([pc, get_reg(operand[0]), operand[1]])
-    output_buf.append(0)
-    log_err("(pc=%x) ldl set tag"%(pc))
-    pc+=1
 
-def bnzl_coder(info, operand):
+def labeli_coder(info, operand):
     global pc
-    bzl_rec.append([pc, operand[0]])
+    if info[2]:
+        rec_tab.append([pc, info[3], get_reg(operand[0]), operand[1], info[4]])
+    else:
+        rec_tab.append([pc, info[3], 0, operand[0], info[4]])
     output_buf.append(0)
-    log_err("(pc=%x) bzl set tag"%(pc))
+    log_err("(pc=%x) set relocate item"%(pc))
     pc+=1
 
 """
-ld <Tr> <imme>          #load
+ld <Tr> <Ar>            #load
 movi <Tr> <imme>        #move imme
 st <Dr> <Ar>            #store data to address
 inc <Tr>                #Tr+1
 cmpi <Tr>, <immu>       #compare with imme
-bnz <immu>               #relative branch to address
+bnz <immu>              #relative branch to address
 nop                     #no operation
 halt                    #halt the cpu
 data <imme_byte>...     #data definition
 ldl <Tr> <lable>        #label version of ld
 label <name>            #define label
-bnzl <label>             #label version of bz
+bnzl <label>            #label version of bnz
+movil <Tr> <label>      #label version of movi
 """
 
+# [ op : [opcode, coder]
+# [ psudeo : [opcode, coder, with_tr, read_opcode, is_abs_addr]
 inst_set = {
         'nop':  [0, com_coder],
-        'ld':   [1, com_oti_coder],
+        'ld':   [1, com_ots_coder],
         'movi': [2, com_oti_coder],
         'st':   [3, com_ots_coder],
         'inc':  [4, com_ot_coder],
@@ -152,9 +152,9 @@ inst_set = {
         'bnz':   [6, com_oi_coder],
         'halt': [7, com_coder],
         'data': [-1, data_coder],
-        'ldl':  [-1, ldl_coder],
         'label':[-1, label_coder],
-        'bnzl':  [-1, bnzl_coder]
+        'bnzl':  [-1, labeli_coder, False, 'bnz', False],
+        'movil': [-1, labeli_coder, True, 'movi', True]
 }
 
 def pharse_line(line):
@@ -180,28 +180,22 @@ if not f:
 for line in f.readlines():
     pharse_line(line.strip())
 
-#relacate label
-for i in ldl_rec:
-    if i[2] in labels:
-        raddr=labels[i[2]]-i[0]
+#relacate label [[pc, op, tr, label_name, is_abs_addr]]
+for i in rec_tab:
+    rpc=i[0]; rop=i[1]; rtr=i[2]; rlabel=i[3]; ris_abs_addr=i[4]
+    if rlabel in labels:
+        if ris_abs_addr:
+            raddr=labels[rlabel]
+        else:
+            raddr=labels[rlabel]-rpc
         raddr*=4
-        inst=make_op_bytes(inst_set['ld'][0], i[1])
-        inst[2:4]=raddr.to_bytes(2, 'little')
-        output_buf[i[0]]=int.from_bytes(inst, 'little')
-        log_err("relocate %x with %x"%(i[0], int.from_bytes(inst, 'little')))
-    else:
-        log_err("cannot find label %s"%(i[2]))
-
-for i in bzl_rec:
-    if i[1] in labels:
-        raddr=labels[i[1]]-i[0]
-        raddr*=4
-        inst=make_op_bytes(inst_set['bnz'][0], 0)
+        inst=make_op_bytes(inst_set[rop][0], rtr)
         inst[2:4]=raddr.to_bytes(2, 'little', signed=True)
-        output_buf[i[0]]=int.from_bytes(inst, 'little')
-        log_err("relocate %x with %x"%(i[0], int.from_bytes(inst, 'little')))
+        output_buf[rpc]=int.from_bytes(inst, 'little')
+        log_err("reloc %x (label=%s on 0x%x) with inst(%x)"%(rpc, rlabel,
+            labels[rlabel], output_buf[rpc]))
     else:
-        log_err("cannot find label %s"%(i[1]))
+        log_err("cannot find label %s"%(i[3]), exit=True)
 
 of = os.fdopen(sys.stdout.fileno(), "wb")
 assert of

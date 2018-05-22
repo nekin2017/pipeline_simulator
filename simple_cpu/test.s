@@ -1,15 +1,25 @@
 #test assample file for simple cpu
 
-ldl 1 data
+movi 1 0
+movil 2 data_addr
+movil 3 io_addr
+ld 3 3
+
 label loop
-movi 2 0x100
-movi 3 5000
-st 2 3
+ld 4 2
+st 4 3
+inc 2
 inc 1
-cmpi 1 10
+cmpi 1 10 
 bnzl loop
+
 halt
 
-label data
-data 0 0x12345678 0x12 0x33
+label data_addr
+#data 0x30 0x31 0x32 0x33 0x34 0x35 0x36 0x37 0x38 0x39 0x3a 0x3b
+data 0x30313233 0x34353637 0x38393a3b
+data 9 0x12345678 0x12 0x33
 data 1
+
+label io_addr
+data 4096

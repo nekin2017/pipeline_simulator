@@ -24,12 +24,11 @@ def log_err(msg, exit=False):
     if exit: sys.exit(-1)
 
 def log(msg):
-    #sys.stderr.write(msg)
-    #sys.stderr.write("\n")
+    #sys.stderr.write(msg); sys.stderr.write("\n")
     pass
 
 """
-ld <Tr> <imme>          #load
+ld <Tr> <Ar>            #load
 movi <Tr> <imme>        #move imme
 st <Dr> <Ar>            #store data to address
 inc <Tr>                #Tr+1
@@ -45,14 +44,23 @@ def op_nop(cpu, inst):
 
 def op_ld(cpu, inst):
     tr=inst[1]
-    addr=cpu.pc+int.from_bytes(inst[2:4], 'little', signed=True)
-    cpu.reg[tr]=int.from_bytes(cpu.mem[addr:addr+4], 'little', signed=False)
-    log("load from 0x%x(0x%x) to r%d"%(addr, cpu.reg[tr], tr))
+    sr=inst[2]
+    addr=cpu.reg[sr]
+    if addr < 0 or addr > 8192:
+        log_err("segment fault on address 0x%x"%(cpu.reg[sr]), exit=True)
+
+    if addr >= 4096:
+        print("invalid read io(0x%x)!"%(cpu.reg[tr], addr-4096))
+    else:
+        cpu.reg[tr]=int.from_bytes(cpu.mem[addr:addr+4], 'little', signed=False)
+
+    log("load from r%d(0x%x value=0x%x) to r%d"%(sr, addr, cpu.reg[tr], tr))
+
     return 4
 
 def op_movi(cpu, inst):
     tr=inst[1]
-    imme=cpu.pc+int.from_bytes(inst[2:4], 'little', signed=True)
+    imme=int.from_bytes(inst[2:4], 'little', signed=True)
     cpu.reg[tr]=imme
     log("set 0x%x to r%d"%(cpu.reg[tr], tr))
     return 4
@@ -60,15 +68,20 @@ def op_movi(cpu, inst):
 def op_st(cpu, inst):
     tr=inst[1]
     sr=inst[2]
-    addr=cpu.reg[sr] 
+    addr=cpu.reg[sr]
     if addr < 0 or addr > 8192:
         log_err("segment fault on address 0x%x"%(cpu.reg[sr]), exit=True)
 
     if addr >= 4096:
-        print("io(0x%x)!"%(cpu.reg[tr]))
+        if addr==4096:
+            print("%c"%(cpu.reg[tr].to_bytes(4, 'little')[0]), end='')
+            #print("%x "%(cpu.reg[tr].to_bytes(4, 'little')[0]), end='')
+        else:
+            print("invalid io(0x%x)!"%(cpu.reg[tr]))
     else:
-        cpu.mem[addr:addr+4]=tr.to_bytes(4, 'little')
-        log("store r%d(0x%x) to 0x%x"%(tr, cpu.reg[tr], addr))
+        cpu.mem[addr:addr+4]=cpu.reg[tr].to_bytes(4, 'little')
+
+    log("store r%d(0x%x) to 0x%x"%(tr, cpu.reg[tr], addr))
 
     return 4
 
@@ -80,7 +93,7 @@ def op_inc(cpu, inst):
 
 def op_cmpi(cpu, inst):
     tr=inst[1]
-    imme=cpu.pc+int.from_bytes(inst[2:4], 'little', signed=True)
+    imme=int.from_bytes(inst[2:4], 'little', signed=True)
     cpu.pstate &= 0
     if cpu.reg[tr] > imme:
         cpu.pstate |= 0x2 #bigger than bit
@@ -123,7 +136,7 @@ class cpu:
 
     def load_program(self, path):
         f = open(path, mode='rb')
-        self.mem=f.read()
+        self.mem=bytearray(f.read())
         f.close()
 
     def fetch(self):

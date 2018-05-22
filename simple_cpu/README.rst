@@ -33,9 +33,9 @@ pseudo code
 ::
 
         data <imme_byte>...     #data definition
-        ldl <Tr> <lable>        #label version of ld
         label <name>            #define label
-        bnzl <label>             #label version of bz
+        bnzl <label>            #label version of bnz
+        movil <label>           #label version of movi
 
 
 instruction encoding
@@ -63,6 +63,8 @@ memory space
 `````````````
 * 0-4095: memory
 * 4096-8192: io space
+  0: output
+  4: input
 * others are invalid
 
 interrupt vector
